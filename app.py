@@ -76,34 +76,37 @@ def welcome():
         f"/api/v1.0/tobs<br/>"
         f"The temperature observations from the previous year.<br/>"
         f"<br/>"
-        f"/api/v1.0/YYYY-MM-DD"
+        f"/api/v1.0/<start>"
         f"<br/>"
-        f"/api/v1.0/YYYY-MM-DD/YYYY-MM-DD"
+        f"/api/v1.0/<start>/<end>"
         f"<br/>"
         f"The list of minimum, maximum and average temperatures between 08-22-2016 through 08-23-2017.<br/>"
         f"<br/>"
         f"Thanks for visiting the app!"
     )
 
+
+
+
+
 # App routing for precipitation for the past 12 months
 @app.route("/api/v1.0/precipitation")
 def precipitation():
     # Create session link
     session = Session(engine)
+
     # Query the last 12 months of precipitation data
     cutoff_date = '2016-08-23'
     results = session.query(Measurement.date, Measurement.prcp).filter(Measurement.date > cutoff_date).all()
     session.close()
 
+    if not results:
+        return jsonify({"error": "No precipitation data found."})
+    
     # Create a dictionary from the results and append to a list of precipitation_data
-    precip_data = []
-    for date, prcp in results:
-        precip_dict = {}
-        precip_dict["date"] = date
-        precip_dict["prcp"] = prcp
-        precip_data.append(precip_dict)
-
-    return jsonify(precip_data)
+    precipitation_data = {date: prcp for date, prcp in results}
+    
+    return jsonify(precipitation_data)
 
 
 
@@ -113,15 +116,16 @@ def precipitation():
 def stations():
     # Create session link
     session = Session(engine)
+    
     # Query the names of all stations in the list
-    results = session.query(Measurement.station).distinct().all()
+    results2 = session.query(Measurement.station).distinct().all()
     session.close()
 
     # Create a dictionary of the active stations and their counts
     station_data = []
-    for station in results:
+    for station in results2:
         station_dict = {}
-        station_dict["station name"] = station[0]
+        station_dict["Station Name"] = station[0]
         station_data.append(station_dict)
 
     return jsonify(station_data)
@@ -129,29 +133,33 @@ def stations():
 
 
 
-# App routing for t_observed for the past 12 months
+# App routing for temperature observation (TOBS)for the past 12 months
 @app.route("/api/v1.0/tobs")
 def tobs():
     # Create session link
     session = Session(engine)
+    
     # Query the last 12 months of temperature data from the most active observation station 
-    cutoff_date_12month = '2017-08-23'
-    results = session.query(Measurement.date, Measurement.tobs).filter((Measurement.station == 'USC00519281') & (Measurement.date > cutoff_date_12month)).all()
+    results3 = session.query( Measurement.date, Measurement.tobs).filter(Measurement.station=='USC00519281').filter(Measurement.date>='2016-08-23').all()
     session.close()
 
     # Create a dictionary of t_obs data for the most active station
-    tobs_data = []
-    for date, tobs in results:
+    if not results3:
+        return jsonify({"error": "No temperature observation data found."})
+
+    # Format the results as a list of dictionaries  
+    tobs_obs = []
+    for date, tobs in results3:
         tobs_dict = {}
         tobs_dict["Date"] = date
-        tobs_dict["Oberved Temperature"] = tobs
-        tobs_data.append(tobs_dict)
+        tobs_dict["Temperature"] = tobs
+        tobs_obs.append(tobs_dict)
 
-    return jsonify(tobs_data)
+    return jsonify(tobs_obs)
 
+    
 
-
-
+# App routing for temperature statistics for a given start date 
 @app.route("/api/v1.0/<start>")
 def start(start):
     # Create session link
@@ -180,6 +188,8 @@ def start(start):
     return jsonify(temp_data)
 
 
+
+# App routing for temperature statistics for a given start and end date 
 @app.route("/api/v1.0/<start>/<end>")
 def start_end(start, end):
     # Create session link
@@ -214,9 +224,12 @@ if __name__ == '__main__':
 
 
 
-#Test Start Date URL = 127.0.0.1:5000/api/v1.0/2016-08-22
-#Test Start Date/End Date  URL = 127.0.0.1:5000/api/v1.0/2016-08-22/2017-08-23
+# Test Start Date URL = 127.0.0.1:5000/api/v1.0/2016-08-22
+# Code after /api/v1.0/ must be in the YYYY-MM-DD format
 
+
+# Test Start Date/End Date  URL = 127.0.0.1:5000/api/v1.0/2016-08-22/2017-08-23
+# Code after /api/v1.0// must be in the YYYY-MM-DD / YYYY-MM-DDformat
 
 
 
